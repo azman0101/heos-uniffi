@@ -1,0 +1,20 @@
+[package]
+name = "heos_core"
+description = "Moteur réseau Denon HEOS (TCP 1255) exposé à Kotlin via UniFFI"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+name = "heos_core"
+crate-type = ["cdylib", "lib"]
+
+[dependencies]
+uniffi = { version = "0.32", features = ["tokio"] }
+tokio = { version = "1", features = ["net", "io-util", "time", "sync", "rt"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+
+[dev-dependencies]
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
