@@ -22,11 +22,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
-private const val MAX = 100
 private const val FINE_SPAN = 20 // en mode fin, toute la largeur couvre 20 crans
 
 /**
- * Curseur de volume 0..100 pensé pour l'ajustement précis :
+ * Curseur d'entiers (0..100 par défaut) pensé pour l'ajustement précis :
  * piste épaisse sur toute la largeur, crans entiers, boutons −/+ (±1) et
  * « mode fin » où la largeur du curseur ne couvre que [FINE_SPAN] crans autour de la valeur.
  */
@@ -37,11 +36,15 @@ fun FineSlider(
     onValueChange: (Int) -> Unit,
     fine: Boolean,
     modifier: Modifier = Modifier,
+    min: Int = 0,
+    max: Int = 100,
 ) {
     // Centre de la fenêtre fine : recalé quand on relâche le doigt ou qu'on active le mode.
     var anchor by remember(fine) { mutableIntStateOf(value) }
-    val low = (anchor - FINE_SPAN / 2).coerceIn(0, MAX - FINE_SPAN)
-    val range = if (fine) low.toFloat()..(low + FINE_SPAN).toFloat() else 0f..MAX.toFloat()
+    // Le mode fin n'a de sens que si l'étendue dépasse la fenêtre.
+    val windowed = fine && max - min > FINE_SPAN
+    val low = (anchor - FINE_SPAN / 2).coerceIn(min, max - FINE_SPAN)
+    val range = if (windowed) low.toFloat()..(low + FINE_SPAN).toFloat() else min.toFloat()..max.toFloat()
     val steps = (range.endInclusive - range.start).toInt() - 1
 
     Row(
@@ -49,7 +52,7 @@ fun FineSlider(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        StepButton("−", enabled = value > 0) { onValueChange(value - 1) }
+        StepButton("−", enabled = value > min) { onValueChange(value - 1) }
         Slider(
             value = value.toFloat().coerceIn(range),
             onValueChange = { onValueChange(it.toInt()) },
@@ -72,7 +75,7 @@ fun FineSlider(
                 )
             },
         )
-        StepButton("+", enabled = value < MAX) { onValueChange(value + 1) }
+        StepButton("+", enabled = value < max) { onValueChange(value + 1) }
     }
 }
 

@@ -7,11 +7,10 @@ use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 use tokio::time::sleep;
 
-use crate::channels::{collect_channels, SpeakerChannel};
 use crate::connection::Connection;
 use crate::error::HeosError;
 use crate::protocol::Response;
-use crate::upnp;
+use crate::levels::{self, SpeakerLevel, SpeakerRole};
 
 pub const HEOS_PORT: u16 = 1255;
 const RECONNECT_DELAY: Duration = Duration::from_secs(2);
@@ -71,8 +70,6 @@ struct Session {
     event_task: JoinHandle<()>,
     /// Hôte de la barre (sans port HEOS) ; leader du groupe surround.
     lead_host: String,
-    /// Appareils réglables, remplis par `discover_channels`.
-    channel_hosts: Vec<String>,
 }
 
 impl Drop for Session {
@@ -132,7 +129,6 @@ impl HeosController {
             commands,
             event_task,
             lead_host,
-            channel_hosts: Vec::new(),
         });
         Ok(speakers)
     }
@@ -160,35 +156,13 @@ impl HeosController {
             .map(|_| ())
     }
 
-    /// Détecte les enceintes du système (barre, caisson, arrières…) et leur volume individuel.
-    /// À appeler après `connect` ; ré-appelable pour rafraîchir les niveaux.
-    pub async fn discover_channels(&self) -> Result<Vec<SpeakerChannel>, HeosError> {
-        let lead = self.lead_host().await?;
-        let candidates = upnp::ssdp_discover().await;
-        let channels = collect_channels(&lead, candidates).await?;
-        if let Some(s) = self.session.lock().await.as_mut() {
-            s.channel_hosts = channels.iter().map(|c| c.host.clone()).collect();
-        }
-        Ok(channels)
+    /// Niveaux (−12..+12 dB) de la barre, des arrières et du caisson, comme l'écran « Niveaux » de l'app HEOS.
+    pub async fn get_speaker_levels(&self) -> Result<Vec<SpeakerLevel>, HeosError> {
+        levels::read_levels(&self.lead_host().await?).await
     }
 
-    /// Règle le volume d'une seule enceinte (`host` vient de `SpeakerChannel::host`).
-    pub async fn set_channel_volume(&self, host: String, level: u8) -> Result<(), HeosError> {
-        if level > 100 {
-            return Err(HeosError::InvalidArgument {
-                reason: format!("volume {level} hors de 0..=100"),
-            });
-        }
-        {
-            let guard = self.session.lock().await;
-            let session = guard.as_ref().ok_or(HeosError::NotConnected)?;
-            if !session.channel_hosts.contains(&host) {
-                return Err(HeosError::InvalidArgument {
-                    reason: format!("enceinte inconnue : {host}"),
-                });
-            }
-        }
-        upnp::set_volume(&host, level).await
+    pub async fn set_speaker_level(&self, role: SpeakerRole, db: i8) -> Result<(), HeosError> {
+        levels::write_level(&self.lead_host().await?, role, db).await
     }
 
     pub async fn disconnect(&self) {

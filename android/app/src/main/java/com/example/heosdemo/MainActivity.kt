@@ -31,13 +31,12 @@ class MainActivity : ComponentActivity() {
                         if (state.connected) {
                             SpeakersScreen(
                                 speakers = state.speakers,
-                                channels = state.channels,
-                                channelsLoading = state.channelsLoading,
+                                levels = state.levels,
                                 error = state.error,
                                 onVolume = vm::setVolume,
                                 onToggleMute = vm::toggleMute,
-                                onChannelVolume = vm::setChannelVolume,
-                                onRefreshChannels = vm::refreshChannels,
+                                onLevel = vm::setLevel,
+                                onRefreshLevels = vm::refreshLevels,
                                 onDisconnect = vm::disconnect,
                                 onDismissError = vm::dismissError,
                             )

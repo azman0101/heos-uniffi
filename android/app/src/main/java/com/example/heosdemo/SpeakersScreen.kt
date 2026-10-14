@@ -11,7 +11,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -27,19 +26,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import uniffi.heos_core.HeosSpeaker
-import uniffi.heos_core.SpeakerChannel
+import uniffi.heos_core.SpeakerLevel
 import uniffi.heos_core.SpeakerRole
 
 @Composable
 fun SpeakersScreen(
     speakers: List<HeosSpeaker>,
-    channels: List<SpeakerChannel>,
-    channelsLoading: Boolean,
+    levels: List<SpeakerLevel>,
     error: String?,
     onVolume: (pid: Long, level: Int) -> Unit,
     onToggleMute: (pid: Long) -> Unit,
-    onChannelVolume: (host: String, level: Int) -> Unit,
-    onRefreshChannels: () -> Unit,
+    onLevel: (role: SpeakerRole, db: Int) -> Unit,
+    onRefreshLevels: () -> Unit,
     onDisconnect: () -> Unit,
     onDismissError: () -> Unit,
 ) {
@@ -75,31 +73,24 @@ fun SpeakersScreen(
             items(speakers, key = { "pid${it.pid}" }) { speaker ->
                 SpeakerCard(speaker, fine, onVolume, onToggleMute)
             }
-            item(key = "channels-header") {
+            item(key = "levels-header") {
                 Row(
                     Modifier.fillMaxWidth().padding(top = 8.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text("Volume par enceinte", style = MaterialTheme.typography.titleMedium)
-                    if (channelsLoading) {
-                        CircularProgressIndicator(Modifier.padding(end = 12.dp).height(24.dp))
-                    } else {
-                        TextButton(onClick = onRefreshChannels) { Text("Actualiser") }
+                    Column(Modifier.weight(1f)) {
+                        Text("Niveaux par enceinte", style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            "Équilibrage de −12 à +12 dB (comme l'écran « Niveaux » de l'app HEOS)",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
+                    TextButton(onClick = onRefreshLevels) { Text("Actualiser") }
                 }
             }
-            if (channels.isEmpty() && !channelsLoading) {
-                item(key = "channels-empty") {
-                    Text(
-                        "Aucune enceinte détectée sur le réseau.",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-            items(channels, key = { it.host }) { channel ->
-                ChannelCard(channel, fine, onChannelVolume)
-            }
+            items(levels, key = { it.role }) { level -> LevelCard(level, onLevel) }
             item { Spacer(Modifier.height(24.dp)) }
         }
     }
@@ -139,20 +130,25 @@ private fun SpeakerCard(
 }
 
 @Composable
-private fun ChannelCard(
-    channel: SpeakerChannel,
-    fine: Boolean,
-    onChannelVolume: (host: String, level: Int) -> Unit,
-) {
+private fun LevelCard(level: SpeakerLevel, onLevel: (role: SpeakerRole, db: Int) -> Unit) {
     Card(Modifier.fillMaxWidth(), colors = cardColors()) {
         Column(Modifier.padding(16.dp)) {
-            Text(channel.name, style = MaterialTheme.typography.titleMedium)
-            Text(
-                channel.role.label(),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            LevelRow(channel.volume.toInt(), fine) { onChannelVolume(channel.host, it) }
+            Text(level.role.label(), style = MaterialTheme.typography.titleMedium)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                FineSlider(
+                    value = level.db.toInt(),
+                    onValueChange = { onLevel(level.role, it) },
+                    fine = false,
+                    modifier = Modifier.weight(1f),
+                    min = -12,
+                    max = 12,
+                )
+                Text(
+                    "%+d dB".format(level.db.toInt()),
+                    style = MaterialTheme.typography.titleLarge,
+                    modifier = Modifier.padding(start = 12.dp),
+                )
+            }
         }
     }
 }
@@ -174,9 +170,8 @@ private fun cardColors() =
     CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
 
 private fun SpeakerRole.label() = when (this) {
-    SpeakerRole.MAIN -> "Barre de son (avant)"
+    SpeakerRole.MAIN -> "HEOS Bar"
+    SpeakerRole.REAR_LEFT -> "Surround gauche"
+    SpeakerRole.REAR_RIGHT -> "Surround droit"
     SpeakerRole.SUBWOOFER -> "Caisson de basses"
-    SpeakerRole.REAR_LEFT -> "Surround arrière gauche"
-    SpeakerRole.REAR_RIGHT -> "Surround arrière droite"
-    SpeakerRole.OTHER -> "Enceinte"
 }

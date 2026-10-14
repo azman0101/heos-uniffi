@@ -11,15 +11,15 @@ import kotlinx.coroutines.launch
 import uniffi.heos_core.HeosController
 import uniffi.heos_core.HeosException
 import uniffi.heos_core.HeosSpeaker
-import uniffi.heos_core.SpeakerChannel
+import uniffi.heos_core.SpeakerLevel
+import uniffi.heos_core.SpeakerRole
 import uniffi.heos_core.VolumeEventListener
 
 data class UiState(
     val connecting: Boolean = false,
     val connected: Boolean = false,
     val speakers: List<HeosSpeaker> = emptyList(),
-    val channels: List<SpeakerChannel> = emptyList(),
-    val channelsLoading: Boolean = false,
+    val levels: List<SpeakerLevel> = emptyList(),
     val error: String? = null,
 )
 
@@ -29,7 +29,7 @@ class HeosViewModel : ViewModel() {
     private val _state = MutableStateFlow(UiState())
     val state: StateFlow<UiState> = _state
 
-    /** Envois de volume en attente (regroupés), par clé « pid:… » ou « host:… ». */
+    /** Envois en attente (regroupés), par clé « pid:… » ou « level:… ». */
     private val pending = HashMap<String, Job>()
 
     // Appelé depuis un thread du runtime Rust : ne fait que mettre à jour l'état.
@@ -48,7 +48,7 @@ class HeosViewModel : ViewModel() {
             try {
                 val speakers = controller.connect(ip, listener)
                 _state.value = UiState(connected = true, speakers = speakers)
-                refreshChannels()
+                refreshLevels()
             } catch (e: HeosException) {
                 _state.value = UiState(error = e.message ?: e.toString())
             }
@@ -62,16 +62,13 @@ class HeosViewModel : ViewModel() {
         }
     }
 
-    /** Détecte les enceintes du système et relit leur volume individuel. */
-    fun refreshChannels() {
-        if (_state.value.channelsLoading) return
-        _state.update { it.copy(channelsLoading = true) }
+    /** Relit les niveaux (−12..+12 dB) de la barre, des arrières et du caisson. */
+    fun refreshLevels() {
         viewModelScope.launch {
             try {
-                val channels = controller.discoverChannels()
-                _state.update { it.copy(channels = channels, channelsLoading = false) }
+                _state.update { it.copy(levels = controller.getSpeakerLevels()) }
             } catch (e: HeosException) {
-                _state.update { it.copy(channelsLoading = false, error = e.message) }
+                _state.update { it.copy(error = e.message) }
             }
         }
     }
@@ -82,12 +79,12 @@ class HeosViewModel : ViewModel() {
         debounced("pid:$pid") { controller.setVolume(pid, level.toUByte()) }
     }
 
-    /** Volume d'une seule enceinte (UPnP). */
-    fun setChannelVolume(host: String, level: Int) {
+    /** Niveau d'une enceinte en dB, comme l'écran « Niveaux » de l'app HEOS. */
+    fun setLevel(role: SpeakerRole, db: Int) {
         _state.update { s ->
-            s.copy(channels = s.channels.map { if (it.host == host) it.copy(volume = level.toUByte()) else it })
+            s.copy(levels = s.levels.map { if (it.role == role) it.copy(db = db.toByte()) else it })
         }
-        debounced("host:$host") { controller.setChannelVolume(host, level.toUByte()) }
+        debounced("level:$role") { controller.setSpeakerLevel(role, db.toByte()) }
     }
 
     fun toggleMute(pid: Long) {

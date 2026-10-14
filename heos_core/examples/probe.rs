@@ -25,9 +25,9 @@ async fn main() {
         Ok(speakers) => speakers.iter().for_each(|s| println!("{s:?}")),
         Err(e) => return eprintln!("échec : {e}"),
     }
-    match ctl.discover_channels().await {
+    match ctl.get_speaker_levels().await {
         Ok(channels) => channels.iter().for_each(|c| println!("{c:?}")),
-        Err(e) => eprintln!("enceintes individuelles indisponibles : {e}"),
+        Err(e) => eprintln!("niveaux indisponibles : {e}"),
     }
     if listen > 0 {
         println!("écoute des événements pendant {listen}s (bouge le volume à la télécommande)…");

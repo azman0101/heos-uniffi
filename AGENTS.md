@@ -11,8 +11,8 @@ heos_core/              crate cdylib+lib : protocole HEOS + API UniFFI
   src/protocol.rs         JSON/`message` (query-string), événements
   src/connection.rs       socket TCP, requête/réponse, timeouts
   src/controller.rs       HeosController, HeosSpeaker, VolumeEventListener
-  src/upnp.rs             SOAP/UPnP (port 60006) + découverte SSDP : volume par appareil
-  src/channels.rs         SpeakerChannel / SpeakerRole : enceintes du groupe surround
+  src/upnp.rs             SOAP/UPnP minimal (port 60006) : service Denon ACT
+  src/levels.rs           SpeakerLevel / SpeakerRole : « Niveaux » −12…+12 dB par enceinte
   src/error.rs            HeosError  → HeosException côté Kotlin
   tests/fake_server.rs    test bout-en-bout contre une fausse barre
   examples/probe.rs       sonde CLI contre une vraie barre
@@ -61,17 +61,18 @@ Générés, **non versionnés** : `android/app/src/main/jniLibs/`, `android/app/
 - Kotlin : `cargo run --bin uniffi-bindgen generate --library <lib> --language kotlin --out-dir ./android/app/src/main/java`.
 - `build.gradle.kts` : JNA en AAR (`net.java.dev.jna:jna:<version>@aar`) et `kotlinx-coroutines-android` (requis par les bindings async).
 
-## Enceintes individuelles (UPnP)
-Le HEOS CLI n'expose que la **barre** (leader du groupe surround). Caisson et arrières sont des
-membres `GROUP_SLAVE` sans `pid`. Chacun a pourtant son propre registre de volume, joignable en
-UPnP `RenderingControl` (`SetVolume`/`GetVolume`, canal `Master`, port 60006) :
-- `discover_channels()` : SSDP (`urn:schemas-denon-com:device:ACT:1`) → on garde les appareils dont le
-  `GroupUUID` (GroupControl `GetCurrentState`) est celui de la barre ; le rôle vient de `AudioChannel`
-  (`NORMAL`, `LOW_FREQUENCY`, `REAR_LEFT`, `REAR_RIGHT`).
-- `set_channel_volume(host, level)` : `host` doit venir de `discover_channels` (liste blanche).
-- Le volume général reste `set_volume(pid)` (CLI) ; ce n'est pas la somme des volumes individuels.
-- Non implémenté : les « Niveaux » −12…+12 dB de l'app HEOS (`ACT/GetSurroundSpeakerConfig`, `level` = 12 + dB).
-  La lecture marche ; `SetSurroundSpeakerConfig` répond `500 Internal Error` avec le XML relu tel quel.
+## Niveaux par enceinte (écran « Niveaux » de l'app HEOS)
+Le HEOS CLI n'expose que la **barre** (leader du groupe surround ; caisson et arrières n'ont pas de `pid`).
+Les niveaux −12…+12 dB sont dans la config surround de la barre, via UPnP `ACT` (port 60006) :
+- Lecture : `GetSurroundSpeakerConfig` ; `level` brut = 12 + dB (0..=24).
+- Écriture : `SetSurroundSpeakerConfig` **à la barre uniquement**, avec un **fragment** XML (échappé dans l'élément) :
+  `<SurroundSpeakerConfig><Front><Left><level>13</level></Left></Front></SurroundSpeakerConfig>`.
+  Renvoyer la config complète donne `500 Internal Error`. Format relevé par capture réseau de l'app officielle (PCAPdroid).
+- Rôles → chemin : barre = `Front/Left` (**vérifié**) ; arrière G/D = `Rear/Left|Right`, caisson = `Subwoofer/Subwoofer` (**déduit, à confirmer**).
+- API : `get_speaker_levels()`, `set_speaker_level(role, db)` (−12..=12).
+- Le volume général reste `set_volume(pid)` (CLI). Les volumes UPnP `RenderingControl` de chaque appareil
+  existent mais n'affectent pas ce que l'app HEOS affiche : ne pas les utiliser pour « le niveau d'une enceinte ».
+- Ne pas écrire la config d'enceintes sur le vrai matériel sans accord explicite de l'utilisateur.
 
 ## Protocole HEOS : points d'attention
 - `pid` est un **entier signé** (la barre de test a `pid = -196792939`) → `i64`.

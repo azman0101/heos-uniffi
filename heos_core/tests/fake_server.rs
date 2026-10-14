@@ -3,7 +3,7 @@
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use heos_core::{HeosController, HeosError, VolumeEventListener};
+use heos_core::{HeosController, HeosError, SpeakerRole, VolumeEventListener};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::broadcast;
@@ -116,12 +116,6 @@ async fn connect_control_and_receive_events() {
     assert_eq!(wait_for(&rec, 2).await[1], (PID, 55, true));
     ctl.toggle_mute(PID).await.unwrap();
     assert_eq!(wait_for(&rec, 3).await[2], (PID, 55, false));
-
-    // Un hôte jamais renvoyé par discover_channels est refusé (pas de SSRF depuis l'UI).
-    assert!(matches!(
-        ctl.set_channel_volume("203.0.113.9".into(), 10).await,
-        Err(HeosError::InvalidArgument { .. })
-    ));
 }
 
 #[tokio::test]
@@ -129,9 +123,8 @@ async fn rejects_bad_input_and_requires_connection() {
     let ctl = HeosController::new();
     assert!(matches!(ctl.set_volume(1, 50).await, Err(HeosError::NotConnected)));
     assert!(matches!(ctl.toggle_mute(1).await, Err(HeosError::NotConnected)));
-    assert!(matches!(ctl.discover_channels().await, Err(HeosError::NotConnected)));
-    assert!(matches!(ctl.set_channel_volume("h".into(), 5).await, Err(HeosError::NotConnected)));
-    assert!(matches!(ctl.set_channel_volume("h".into(), 101).await, Err(HeosError::InvalidArgument { .. })));
+    assert!(matches!(ctl.get_speaker_levels().await, Err(HeosError::NotConnected)));
+    assert!(matches!(ctl.set_speaker_level(SpeakerRole::Main, 1).await, Err(HeosError::NotConnected)));
     assert!(matches!(ctl.set_volume(1, 101).await, Err(HeosError::InvalidArgument { .. })));
     assert!(matches!(
         ctl.connect("  ".into(), Box::new(Recorder::default())).await,
