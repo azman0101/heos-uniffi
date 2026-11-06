@@ -74,6 +74,12 @@ Les niveaux −12…+12 dB sont dans la config surround de la barre, via UPnP `A
   existent mais n'affectent pas ce que l'app HEOS affiche : ne pas les utiliser pour « le niveau d'une enceinte ».
 - Ne pas écrire la config d'enceintes sur le vrai matériel sans accord explicite de l'utilisateur.
 
+## Connexion au lancement
+L'app essaie la dernière IP validée (défaut `192.168.1.12`, `SharedPreferences`) en moins de 3 s, sans afficher la saisie d'IP.
+`connect` n'aboutit que si l'hôte contacté figure dans `get_players` avec un modèle contenant « bar » (sinon `NotASoundbar`) :
+`get_players` liste tout le système depuis n'importe quel appareil, le modèle seul ne suffit donc pas.
+Sur échec ou délai dépassé, le formulaire s'affiche avec l'erreur. « Déconnecter » y mène aussi, pour changer d'IP.
+
 ## Protocole HEOS : points d'attention
 - `pid` est un **entier signé** (la barre de test a `pid = -196792939`) → `i64`.
 - Deux sockets : commandes (`register_for_change_events?enable=off`) et événements (`enable=on`).

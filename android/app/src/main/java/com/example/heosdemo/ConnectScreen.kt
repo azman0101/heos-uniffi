@@ -1,6 +1,7 @@
 package com.example.heosdemo
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -22,27 +23,33 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 
-private const val DEFAULT_IP = "192.168.1.12"
+/** Vérification de la barre au lancement : remplace la saisie d'IP pendant ~1 s. */
+@Composable
+fun ProbingScreen() {
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Text("Recherche de la barre…", color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
 
 @Composable
 fun ConnectScreen(
+    initialIp: String,
     connecting: Boolean,
     error: String?,
     onConnect: (String) -> Unit,
 ) {
-    var ip by rememberSaveable { mutableStateOf(DEFAULT_IP) }
+    var ip by rememberSaveable { mutableStateOf(initialIp) }
 
     Column(
         modifier = Modifier.fillMaxSize().padding(24.dp),
         verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text("HEOS Demo", style = MaterialTheme.typography.headlineMedium)
+        Text("Barre de son", style = MaterialTheme.typography.headlineMedium)
         Spacer(Modifier.height(24.dp))
         OutlinedTextField(
             value = ip,
             onValueChange = { ip = it },
-            label = { Text("IP de la barre de son") },
+            label = { Text("Adresse IP") },
             singleLine = true,
             enabled = !connecting,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),

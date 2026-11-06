@@ -28,8 +28,8 @@ class MainActivity : ComponentActivity() {
                 Surface(Modifier.fillMaxSize()) {
                     Box(Modifier.fillMaxSize().safeDrawingPadding()) {
                         val state by vm.state.collectAsStateWithLifecycle()
-                        if (state.connected) {
-                            SpeakersScreen(
+                        when {
+                            state.connected -> SpeakersScreen(
                                 speakers = state.speakers,
                                 levels = state.levels,
                                 error = state.error,
@@ -40,8 +40,9 @@ class MainActivity : ComponentActivity() {
                                 onDisconnect = vm::disconnect,
                                 onDismissError = vm::dismissError,
                             )
-                        } else {
-                            ConnectScreen(
+                            state.probing -> ProbingScreen()
+                            else -> ConnectScreen(
+                                initialIp = vm.lastIp,
                                 connecting = state.connecting,
                                 error = state.error,
                                 onConnect = vm::connect,

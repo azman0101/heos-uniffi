@@ -32,7 +32,7 @@ async fn serve(stream: TcpStream, state: Arc<Mutex<(u8, bool)>>, events: broadca
                         reply(path, query, "")
                     }
                     "player/get_players" => reply(path, "", &format!(
-                        r#", "payload": [{{"name": "Salon", "pid": {PID}, "model": "HEOS Bar"}}]"#)),
+                        r#", "payload": [{{"name": "Salon", "pid": {PID}, "model": "HEOS Bar", "ip": "127.0.0.1"}}]"#)),
                     "player/get_volume" => reply(path, &format!("pid={PID}&level={}", state.lock().unwrap().0), ""),
                     "player/get_mute" => reply(path, &format!("pid={PID}&state={}",
                         if state.lock().unwrap().1 { "on" } else { "off" }), ""),
