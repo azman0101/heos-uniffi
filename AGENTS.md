@@ -18,7 +18,7 @@ heos_core/              crate cdylib+lib : protocole HEOS + API UniFFI
   examples/probe.rs       sonde CLI contre une vraie barre
 uniffi-bindgen/         binaire uniffi-bindgen (workspace, évite la feature `cli` dans la lib Android)
 scripts/                gen-kotlin.sh (bindings) · build-android.sh (cargo-ndk + bindings)
-android/                projet Gradle (Compose) — module :app
+android/                projet Gradle : :app (Compose) · :presence (prototype TV, voir plus bas)
 docs/                   spécification
 ```
 
@@ -68,7 +68,9 @@ Les niveaux −12…+12 dB sont dans la config surround de la barre, via UPnP `A
 - Écriture : `SetSurroundSpeakerConfig` **à la barre uniquement**, avec un **fragment** XML (échappé dans l'élément) :
   `<SurroundSpeakerConfig><Front><Left><level>13</level></Left></Front></SurroundSpeakerConfig>`.
   Renvoyer la config complète donne `500 Internal Error`. Format relevé par capture réseau de l'app officielle (PCAPdroid).
-- Rôles → chemin : barre = `Front/Left` (**vérifié**) ; arrière G/D = `Rear/Left|Right`, caisson = `Subwoofer/Subwoofer` (**déduit, à confirmer**).
+- Rôles → chemin : barre = `Front/Left` (**vérifié**) ; arrière G/D = `Rear/Left|Right` (**vérifiés à l'oreille**, malgré `Rear/enabled=0`) ;
+  caisson = `Subwoofer/Subwoofer` (**déduit, à confirmer**).
+- La config contient aussi `Front/Right` et une `distance` par enceinte : effet non testé, ne pas les écrire sans accord explicite.
 - API : `get_speaker_levels()`, `set_speaker_level(role, db)` (−12..=12).
 - Le volume général reste `set_volume(pid)` (CLI). Les volumes UPnP `RenderingControl` de chaque appareil
   existent mais n'affectent pas ce que l'app HEOS affiche : ne pas les utiliser pour « le niveau d'une enceinte ».
@@ -79,6 +81,12 @@ L'app essaie la dernière IP validée (défaut `192.168.1.12`, `SharedPreference
 `connect` n'aboutit que si l'hôte contacté figure dans `get_players` avec un modèle contenant « bar » (sinon `NotASoundbar`) :
 `get_players` liste tout le système depuis n'importe quel appareil, le modèle seul ne suffit donc pas.
 Sur échec ou délai dépassé, le formulaire s'affiche avec l'erreur. « Déconnecter » y mène aussi, pour changer d'IP.
+
+## Prototype `:presence` (TV Sony)
+App Android TV de test, séparée de HEOS Fader : BRAVIA CAM (USB, Camera2) + ML Kit embarqué. TV 32 bits (`armeabi-v7a`).
+Elle estime la place (gauche, centre, droite) et décale `Surround G` et `Surround D` (−5 dB côté proche, +7 dB côté éloigné, 0 au centre), seulement tant qu'elle est à l'écran. Les niveaux d'origine sont remis à la sortie, ou à la prochaine ouverture si l'app a été tuée.
+La télémétrie de ML Kit est coupée dans le manifeste (`TransportBackendDiscovery` retiré) : à revérifier après toute mise à jour de ML Kit.
+Le calibrage de `SeatTracker` vaut pour une seule pièce et une seule position de caméra.
 
 ## Protocole HEOS : points d'attention
 - `pid` est un **entier signé** (la barre de test a `pid = -196792939`) → `i64`.

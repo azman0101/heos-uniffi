@@ -15,3 +15,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "heos-demo"
 include(":app")
+include(":presence")
