@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission android:name="android.permission.CAMERA" />
+
+    <!-- Pour joindre la barre sur le réseau local. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" tools:node="remove" />
+
+    <uses-feature android:name="android.hardware.camera.any" android:required="true" />
+    <uses-feature android:name="android.software.leanback" android:required="true" />
+    <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
+
+    <application
+        android:allowBackup="false"
+        android:banner="@drawable/banner"
+        android:label="HEOS Présence"
+        android:theme="@android:style/Theme.Material.NoActionBar.Fullscreen">
+        <!-- Télémétrie de ML Kit : sans ce service, aucun envoi n'a de destination. -->
+        <service
+            android:name="com.google.android.datatransport.runtime.backends.TransportBackendDiscovery"
+            tools:node="remove" />
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:keepScreenOn="true"
+            android:screenOrientation="landscape">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

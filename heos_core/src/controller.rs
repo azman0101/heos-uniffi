@@ -9,7 +9,7 @@ use tokio::time::sleep;
 
 use crate::connection::Connection;
 use crate::error::HeosError;
-use crate::protocol::Response;
+use crate::protocol::{Player, Response};
 use crate::levels::{self, SpeakerLevel, SpeakerRole};
 
 pub const HEOS_PORT: u16 = 1255;
@@ -94,6 +94,8 @@ impl HeosController {
 
     /// Se connecte à la barre de son (`192.168.1.12` ou `hôte:port`), renvoie toutes
     /// les enceintes avec leur état courant, puis notifie `listener` en temps réel.
+    ///
+    /// Refuse (`NotASoundbar`) un autre appareil HEOS : les niveaux n'existent que sur la barre.
     pub async fn connect(
         &self,
         ip: String,
@@ -119,10 +121,12 @@ impl HeosController {
             conn: Some(CommandChannel::open(&addr).await?),
             addr: addr.clone(),
         };
-        let speakers = fetch_speakers(&mut commands).await?;
+        let players = commands.request("player/get_players").await?.players()?;
+        let lead_host = host_of(&addr);
+        ensure_soundbar(&players, &lead_host)?;
+        let speakers = fetch_speakers(&mut commands, players).await?;
 
         let events = open_event_connection(&addr).await?;
-        let lead_host = host_of(&addr);
         let event_task = tokio::spawn(run_event_loop(addr, listener, events));
 
         *guard = Some(Session {
@@ -182,8 +186,21 @@ fn host_of(addr: &str) -> String {
     addr.rsplit_once(':').map_or(addr, |(h, _)| h).to_string()
 }
 
-async fn fetch_speakers(c: &mut CommandChannel) -> Result<Vec<HeosSpeaker>, HeosError> {
-    let players = c.request("player/get_players").await?.players()?;
+/// `get_players` liste tout le système quel que soit l'appareil interrogé :
+/// c'est bien l'hôte contacté qui doit être la barre.
+fn ensure_soundbar(players: &[Player], host: &str) -> Result<(), HeosError> {
+    let is_bar = |p: &Player| p.ip == host && p.model.to_lowercase().contains("bar");
+    if players.iter().any(is_bar) {
+        Ok(())
+    } else {
+        Err(HeosError::NotASoundbar { host: host.to_string() })
+    }
+}
+
+async fn fetch_speakers(
+    c: &mut CommandChannel,
+    players: Vec<Player>,
+) -> Result<Vec<HeosSpeaker>, HeosError> {
     let mut speakers = Vec::with_capacity(players.len());
     for p in players {
         speakers.push(HeosSpeaker {
@@ -239,5 +256,26 @@ async fn run_event_loop(
                 break c;
             }
         };
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn player(model: &str, ip: &str) -> Player {
+        Player { pid: 1, name: "x".into(), model: model.into(), ip: ip.into() }
+    }
+
+    #[test]
+    fn accepts_only_a_soundbar_at_the_contacted_host() {
+        let players = [player("Denon Home 150", "10.0.0.2"), player("HEOS Bar", "10.0.0.3")];
+        assert!(ensure_soundbar(&players, "10.0.0.3").is_ok());
+        // Enceinte du même système : elle liste la barre, mais n'en est pas une.
+        assert!(matches!(
+            ensure_soundbar(&players, "10.0.0.2"),
+            Err(HeosError::NotASoundbar { .. })
+        ));
+        assert!(ensure_soundbar(&[], "10.0.0.3").is_err());
     }
 }

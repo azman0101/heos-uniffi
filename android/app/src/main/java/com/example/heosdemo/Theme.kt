@@ -5,20 +5,27 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
+private val Graphite = Color(0xFF17181A)
+private val Raised = Color(0xFF34363A)
+private val OffWhite = Color(0xFFECECE8)
+
 private val HeosDark = darkColorScheme(
-    primary = Color(0xFF8AB4F8),
-    onPrimary = Color(0xFF062E6F),
-    secondaryContainer = Color(0xFF2B3A55),
-    onSecondaryContainer = Color(0xFFD6E3FF),
-    background = Color(0xFF0F1115),
-    onBackground = Color(0xFFE6E8EC),
-    surface = Color(0xFF0F1115),
-    onSurface = Color(0xFFE6E8EC),
-    surfaceVariant = Color(0xFF1B1F27),
-    onSurfaceVariant = Color(0xFFB4BAC6),
-    surfaceContainerHighest = Color(0xFF232833),
-    outline = Color(0xFF4A5160),
-    error = Color(0xFFFF8A80),
+    primary = OffWhite,
+    onPrimary = Graphite,
+    secondaryContainer = Raised,
+    onSecondaryContainer = OffWhite,
+    background = Graphite,
+    onBackground = OffWhite,
+    surface = Graphite,
+    onSurface = OffWhite,
+    surfaceVariant = Raised,
+    onSurfaceVariant = Color(0xFF9C9EA3),
+    surfaceContainerHighest = Raised,
+    inverseSurface = OffWhite,
+    inverseOnSurface = Graphite,
+    outline = Color(0xFF5A5C60),
+    outlineVariant = Raised,
+    error = Color(0xFFF2B8B5),
 )
 
 /** L'application est volontairement toujours en sombre (écoute au salon, le soir). */

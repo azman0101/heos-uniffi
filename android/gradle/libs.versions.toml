@@ -6,6 +6,7 @@ activityCompose = "1.13.0"
 lifecycle = "2.10.0"
 coroutines = "1.11.0"
 jna = "5.19.1"
+mlkitFace = "16.1.7"
 
 [libraries]
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activityCompose" }
@@ -17,6 +18,8 @@ compose-material3 = { module = "androidx.compose.material3:material3" }
 kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "coroutines" }
 # @aar : embarque les libjnidispatch.so Android requis par les bindings UniFFI
 jna = { module = "net.java.dev.jna:jna", version.ref = "jna" }
+# Variante embarquée : le modèle est dans l'APK, rien ne passe par le réseau
+mlkit-face = { module = "com.google.mlkit:face-detection", version.ref = "mlkitFace" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
