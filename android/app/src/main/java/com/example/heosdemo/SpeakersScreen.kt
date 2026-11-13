@@ -74,6 +74,7 @@ fun SpeakersScreen(
                 Text(bar.name, style = MaterialTheme.typography.titleMedium)
                 TextButton(onClick = onDisconnect) { Text("Changer d'IP") }
             }
+            RebootControl()
             if (landscape) {
                 Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(32.dp)) {
                     VolumeSection(bar, onVolume, onToggleMute, Modifier.weight(1f))
