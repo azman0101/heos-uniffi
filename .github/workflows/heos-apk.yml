@@ -80,16 +80,53 @@ jobs:
         with:
           cache-read-only: ${{ github.event_name == 'pull_request' }}
 
+      - name: Restore shared signing key
+        id: signing
+        env:
+          KEYSTORE_BASE64: ${{ secrets.HEOS_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.HEOS_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.HEOS_KEY_ALIAS }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo '::notice::No shared key available; APK uses a temporary debug signing identity.'
+            echo 'identity=temporary' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          test -n "$KEYSTORE_PASSWORD" && test -n "$KEY_ALIAS"
+          umask 077
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/heos-signing.keystore"
+          echo "HEOS_KEYSTORE_FILE=$RUNNER_TEMP/heos-signing.keystore" >> "$GITHUB_ENV"
+          echo 'identity=shared' >> "$GITHUB_OUTPUT"
+
       - name: Kotlin unit tests and debug APK
         working-directory: android
+        env:
+          HEOS_KEYSTORE_PASSWORD: ${{ secrets.HEOS_KEYSTORE_PASSWORD }}
+          HEOS_KEY_ALIAS: ${{ secrets.HEOS_KEY_ALIAS }}
+          HEOS_KEY_PASSWORD: ${{ secrets.HEOS_KEY_PASSWORD }}
         run: ./gradlew :app:testDebugUnitTest :app:assembleDebug --console=plain
 
       - name: Verify native libraries in APK
         run: python3 scripts/verify-apk.py android/app/build/outputs/apk/debug/app-debug.apk
 
+      - name: Verify signing certificate
+        if: steps.signing.outputs.identity == 'shared'
+        env:
+          EXPECTED_SHA256: ${{ secrets.HEOS_CERT_SHA256 }}
+        run: |
+          test -n "$EXPECTED_SHA256"
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --print-certs \
+            android/app/build/outputs/apk/debug/app-debug.apk > "$RUNNER_TEMP/apk-certificate.txt"
+          actual=$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' "$RUNNER_TEMP/apk-certificate.txt")
+          test "$actual" = "$EXPECTED_SHA256"
+
+      - name: Remove restored signing key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/heos-signing.keystore"
+
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
-          name: heos-fader-debug-apk
+          name: heos-fader-debug-apk-${{ steps.signing.outputs.identity }}
           path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
