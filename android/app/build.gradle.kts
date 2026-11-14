@@ -26,7 +26,7 @@ android {
             storeFile = file(signingPath)
             storePassword = requireNotNull(System.getenv("HEOS_KEYSTORE_PASSWORD"))
             keyAlias = requireNotNull(System.getenv("HEOS_KEY_ALIAS"))
-            keyPassword = System.getenv("HEOS_KEY_PASSWORD") ?: storePassword
+            keyPassword = System.getenv("HEOS_KEY_PASSWORD")?.takeIf { it.isNotBlank() } ?: storePassword
         }
         buildTypes.getByName("debug").signingConfig = sharedSigning
     }
