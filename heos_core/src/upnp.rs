@@ -23,7 +23,7 @@ pub fn upnp_addr(host: &str) -> String {
     }
 }
 
-async fn http(addr: &str, request: String) -> Result<String, HeosError> {
+pub(crate) async fn http(addr: &str, request: String) -> Result<String, HeosError> {
     timeout(HTTP_TIMEOUT, async {
         let mut stream = TcpStream::connect(addr).await?;
         stream.write_all(request.as_bytes()).await?;

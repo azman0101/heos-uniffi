@@ -11,6 +11,8 @@ pub enum HeosError {
     Protocol { reason: String },
     #[error("commande refusée par HEOS (eid {code}) : {reason}")]
     CommandFailed { code: i32, reason: String },
+    #[error("{host} n'est pas une barre de son HEOS")]
+    NotASoundbar { host: String },
     #[error("argument invalide : {reason}")]
     InvalidArgument { reason: String },
 }

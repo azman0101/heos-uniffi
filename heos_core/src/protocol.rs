@@ -30,6 +30,8 @@ pub struct Player {
     pub name: String,
     #[serde(default)]
     pub model: String,
+    #[serde(default)]
+    pub ip: String,
 }
 
 /// Contenu de `event/player_volume_changed`.
