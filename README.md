@@ -40,28 +40,30 @@ Le prototype `:presence` n'est pas inclus dans cet artefact.
 
 ### Signature identique en local et dans CI
 
-Depuis Termux : `pkg install gh openjdk-21 openssl-tool`, puis `gh auth login`
-et `bash scripts/setup-signing-termux.sh`. Le script réutilise `~/.android/debug.keystore`
-s'il existe, sinon crée une clé dédiée. **Pour mettre à jour une installation existante,
-importer d'abord son keystore d'origine** : une nouvelle clé ne peut pas remplacer sa signature.
-Le debug keystore standard utilise l'alias `androiddebugkey` et le mot de passe `android`.
-
-Le script conserve la clé et `signing.env` dans `~/.config/heos-fader/`, hors dépôt,
-et envoie quatre secrets avec `gh secret set` : `HEOS_KEYSTORE_BASE64`,
-`HEOS_KEYSTORE_PASSWORD`, `HEOS_KEY_ALIAS`, `HEOS_CERT_SHA256`.
-Sauvegarder ce dossier et le copier de manière sécurisée sur chaque machine de build ;
-GitHub ne permet pas de relire les valeurs des secrets après envoi.
-
-Avant tout build local, charger le même matériel :
+Sur le MacBook, après authentification avec `gh`, exécuter :
 
 ```bash
-source "$HOME/.config/heos-fader/signing.env"
+bash scripts/setup-signing.sh
+```
+
+Le script réutilise `~/.android/debug.keystore` (alias `androiddebugkey`, mot de passe
+standard `android`) et envoie quatre secrets : `HEOS_KEYSTORE_BASE64`,
+`HEOS_KEYSTORE_PASSWORD`, `HEOS_KEY_ALIAS`, `HEOS_CERT_SHA256`.
+Il ne remplace ni ne génère la clé : les APK signés localement conservent leur identité.
+Sauvegarder ce keystore de manière sécurisée ; GitHub ne permet pas de relire les secrets.
+
+Les builds locaux utilisent déjà ce fichier par défaut. Pour le sélectionner explicitement :
+
+```bash
+export HEOS_KEYSTORE_FILE="$HOME/.android/debug.keystore"
+export HEOS_KEYSTORE_PASSWORD=android
+export HEOS_KEY_ALIAS=androiddebugkey
 cd android
 ./gradlew :app:assembleDebug
 ```
 
-CI restaure le keystore temporairement, signe l'APK, vérifie le SHA-256 du certificat,
-puis supprime le fichier. Les PR de forks sans accès aux secrets restent compilables :
-leur artefact `-temporary` ne permet pas une mise à jour de l'installation signée avec
-la clé partagée. Le même identifiant d'application et un versionCode non inférieur
-restent nécessaires pour une mise à jour. Le script ne régénère pas une clé existante.
+CI restaure le même keystore temporairement, signe l'APK, vérifie le SHA-256 du
+certificat puis supprime le fichier. Les PR de forks sans accès aux secrets restent
+compilables : leur artefact `-temporary` ne permet pas une mise à jour de l'installation
+signée avec la clé partagée. Le même identifiant d'application et un versionCode non
+inférieur restent nécessaires pour une mise à jour.
