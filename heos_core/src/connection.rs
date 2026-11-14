@@ -37,7 +37,7 @@ impl Connection {
             let mut line = String::new();
             if self.reader.read_line(&mut line).await? == 0 {
                 return Err(HeosError::Connection {
-                    reason: "connexion fermée par la barre de son".into(),
+                    reason: "connexion fermée par l’appareil HEOS".into(),
                 });
             }
             let line = line.trim();

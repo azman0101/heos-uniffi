@@ -17,3 +17,8 @@ android/app/src/main/java/uniffi/
 
 # graphify
 graphify-out/
+
+# Private APK signing material
+*.keystore
+*.jks
+signing.env
