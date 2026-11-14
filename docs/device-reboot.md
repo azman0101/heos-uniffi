@@ -12,9 +12,14 @@ Chaque appareil reçoit `heos://system/reboot` sur sa propre connexion TCP 1255.
 Les commandes d'un lot partent simultanément, sans attendre le retour de la barre.
 Aucun changement de niveaux, reset usine, ni nouvelle tentative automatique.
 Une réponse HEOS de succès signifie « commande acceptée », pas « appareil revenu ».
-Une fermeture de socket ou un délai dépassé laisse le résultat non confirmé :
-la commande peut avoir été appliquée. Chaque résultat est affiché séparément et
-les boutons sont bloqués 30 secondes après le lot pour éviter les doubles envois.
+Après un acquittement ou une coupure de transport, l'app observe pendant au plus
+2 minutes les réponses `system/heart_beat` sur des connexions neuves. Une coupure
+suivie d'une réponse valide affiche « Appareil de nouveau en ligne ». Une simple
+connexion TCP ne suffit pas. Sans coupure observée, elle indique que l'appareil
+est joignable mais que le reboot n'est pas confirmé ; sans retour, elle indique
+que l'appareil reste injoignable. Aucun rejeu du reboot. Une erreur d'ouverture
+initiale est indiquée comme commande non envoyée ; un refus explicite n'est pas
+traité comme un reboot. Les commandes sont bloquées pendant la vérification.
 La reconnexion existante des commandes et événements de la barre reste active.
 
 Protocole : section « HEOS Speaker Reboot » de la spécification Denon :

@@ -14,7 +14,6 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -57,7 +56,7 @@ class RebootViewModel(application: Application) : AndroidViewModel(application) 
 
     fun reboot(devices: List<RebootDevice>) {
         if (state.value.busy || state.value.scanning || devices.isEmpty()) return
-        state.update { it.copy(busy = true, message = "Envoi des commandes…") }
+        state.update { it.copy(busy = true, message = "Redémarrage demandé. Vérification du retour en ligne (jusqu’à 2 minutes)…") }
         viewModelScope.launch {
             try {
                 val results = rebootDevices(devices)
@@ -67,8 +66,6 @@ class RebootViewModel(application: Application) : AndroidViewModel(application) 
             } catch (e: Exception) {
                 state.update { it.copy(message = "Redémarrage non confirmé : ${e.message}") }
             } finally {
-                // Guard against accidental double taps; no automatic command retry.
-                delay(30_000)
                 state.update { it.copy(busy = false) }
             }
         }
@@ -115,7 +112,7 @@ fun RebootControl(vm: RebootViewModel = viewModel()) {
                         ) { Text("Tous les appareils (${state.devices.size})") }
                     }
                     state.message?.let { Text(it) }
-                    if (state.busy) Text("Patientez avant une nouvelle commande. Le retour en ligne peut prendre une minute.")
+                    if (state.busy) Text("Vérification en cours. Les commandes restent bloquées jusqu’au résultat, pendant 2 minutes maximum.")
                 }
             },
             confirmButton = { TextButton(onClick = { opened = false }) { Text("Fermer") } },
